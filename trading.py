@@ -176,10 +176,12 @@ class Trading:
         try:
             markets_response = response["response"]
             for market in markets_response:
-            	if market["name"] == "NYSE":
-            	    return (market["startTime"] , market["endTime"])
-            	    
-
+                if market["name"] == "NYSE":
+                    return (market["startTime"] , market["endTime"])
+        except KeyError:
+            self.logs.error("Malformed markets response: %s" % response)
+            return ("0","0")
+                    
     def get_market_status(self):
         """Finds out whether the markets are open right now."""
 
@@ -196,14 +198,14 @@ class Trading:
         except KeyError:
             self.logs.error("Malformed clock response: %s" % response)
             return None
-		(start_time, end_time) = self.get_markets()
-		if end_time < current < start_time:
-		    self.logs.debug("Current market status: %s" % current)
-		    return current
+            
+        start_time, end_time = self.get_markets()
+        if end_time < current < start_time:
+            self.logs.debug("Current market status: %s" % current)
+            return current
         else:
             self.logs.error("Unknown market status: %s" % current)
             return None
-
 
     def get_historical_prices(self, ticker, timestamp):
         """Finds the last price at or before a timestamp and at EOD."""
