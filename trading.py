@@ -167,7 +167,7 @@ class Trading:
         return round(max(0.0, balance - CASH_HOLD) / num_strategies, 2)
         
     def get_markets(self):
-        """Finds out whether the markets are open right now."""
+        """Finds out if NYSE start and end time."""
         markets = QUESTTRADE_API_URL % "/markets"
         response = self.make_request(url=markets)
         if not response:
@@ -196,13 +196,14 @@ class Trading:
         except KeyError:
             self.logs.error("Malformed clock response: %s" % response)
             return None
-
-        if current not in ["pre", "open", "after", "close"]:
+		(start_time, end_time) = self.get_markets()
+		if end_time < current < start_time:
+		    self.logs.debug("Current market status: %s" % current)
+		    return current
+        else:
             self.logs.error("Unknown market status: %s" % current)
             return None
 
-        self.logs.debug("Current market status: %s" % current)
-        return current
 
     def get_historical_prices(self, ticker, timestamp):
         """Finds the last price at or before a timestamp and at EOD."""
