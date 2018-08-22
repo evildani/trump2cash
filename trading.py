@@ -3,9 +3,6 @@
 from datetime import datetime
 from datetime import timedelta
 from holidays import UnitedStates
-from lxml.etree import Element
-from lxml.etree import SubElement
-from lxml.etree import tostring
 from oauth2 import Consumer
 from oauth2 import Client
 from oauth2 import Token
@@ -19,25 +16,20 @@ from threading import Timer
 from logs import Logs
 
 # Read the authentication keys for TradeKing from environment variables.
-TRADEKING_CONSUMER_KEY = getenv("TRADEKING_CONSUMER_KEY")
-TRADEKING_CONSUMER_SECRET = getenv("TRADEKING_CONSUMER_SECRET")
-TRADEKING_ACCESS_TOKEN = getenv("TRADEKING_ACCESS_TOKEN")
-TRADEKING_ACCESS_TOKEN_SECRET = getenv("TRADEKING_ACCESS_TOKEN_SECRET")
+TRADEKING_CONSUMER_KEY = getenv("QUESTTRADE_CONSUMER_KEY")
+TRADEKING_CONSUMER_SECRET = getenv("QUESTTRADE_CONSUMER_SECRET")
+TRADEKING_ACCESS_TOKEN = getenv("QUESTTRADE_ACCESS_TOKEN")
+TRADEKING_ACCESS_TOKEN_SECRET = getenv("QUESTTRADE_ACCESS_TOKEN_SECRET")
 
 # Read the TradeKing account number from the environment variable.
-TRADEKING_ACCOUNT_NUMBER = getenv("TRADEKING_ACCOUNT_NUMBER")
+TRADEKING_ACCOUNT_NUMBER = getenv("QUESTTRADE_ACCOUNT_NUMBER")
 
 # Only allow actual trades when the environment variable confirms it.
-USE_REAL_MONEY = getenv("USE_REAL_MONEY") == "YES"
+USE_REAL_MONEY = getenv("USE_REAL_MONEY") == "NO"
 
 # The base URL for API requests to TradeKing.
-TRADEKING_API_URL = "https://api.tradeking.com/v1/%s.json"
+QUESTTRADE_API_URL = "https://api01.iq.questrade.com/v1/"
 
-# The XML namespace for FIXML requests.
-FIXML_NAMESPACE = "http://www.fixprotocol.org/FIXML-5-0-SP2"
-
-# The HTTP headers for FIXML requests.
-FIXML_HEADERS = {"Content-Type": "text/xml"}
 
 # The amount of cash in dollars to hold from being spent.
 CASH_HOLD = 1000
@@ -49,13 +41,17 @@ LIMIT_FRACTION = 0.1
 ORDER_DELAY_S = 30 * 60
 
 # Blacklsited stock ticker symbols, e.g. to avoid insider trading.
-TICKER_BLACKLIST = ["GOOG", "GOOGL"]
+TICKER_BLACKLIST = ["CTXS"]
 
 # We're using NYSE and NASDAQ, which are both in the easters timezone.
 MARKET_TIMEZONE = timezone("US/Eastern")
 
 # The filename pattern for historical market data.
 MARKET_DATA_FILE = "market_data/%s_%s.txt"
+
+#OAuth authentication for questtrade
+PRACTICE_REFRESH_TOKEN_URL = "https://practicelogin.questrade.com/oauth2/token?grant_type=refresh_token&refresh_token="
+REFRESH_TOKEN_URL = "https://login.questrade.com/oauth2/token?grant_type=refresh_token&refresh_token="
 
 
 class Trading:
@@ -355,19 +351,19 @@ class Trading:
         return MARKET_TIMEZONE.localize(market_time)
 
     def make_request(self, url, method="GET", body="", headers=None):
-        """Makes a request to the TradeKing API."""
+        """Makes a request to the QuestTrade API."""
 
-        consumer = Consumer(key=TRADEKING_CONSUMER_KEY,
-                            secret=TRADEKING_CONSUMER_SECRET)
-        token = Token(key=TRADEKING_ACCESS_TOKEN,
-                      secret=TRADEKING_ACCESS_TOKEN_SECRET)
+        consumer = Consumer(key=QUESTTRADE_CONSUMER_KEY,
+                            secret=QUESTTRADE_CONSUMER_SECRET)
+        token = Token(key=QUESTTRADE_ACCESS_TOKEN,
+                      secret=QUESTTRADE_ACCESS_TOKEN_SECRET)
         client = Client(consumer, token)
 
-        self.logs.debug("TradeKing request: %s %s %s %s" %
+        self.logs.debug("QuestTrade request: %s %s %s %s" %
                         (url, method, body, headers))
         response, content = client.request(url, method=method, body=body,
                                            headers=headers)
-        self.logs.debug("TradeKing response: %s %s" % (response, content))
+        self.logs.debug("QuestTrade response: %s %s" % (response, content))
 
         try:
             return loads(content)
@@ -461,33 +457,58 @@ class Trading:
         """Calculates the limit price for a sell (or short) order."""
 
         return round((1 - LIMIT_FRACTION) * price, 2)
-
+        
     def get_balance(self):
-        """Finds the cash balance in dollars available to spend."""
+        """Finds the cash balance in USD dollars available to spend."""
 
-        balances_url = TRADEKING_API_URL % (
-            "accounts/%s" % TRADEKING_ACCOUNT_NUMBER)
+        balances_url = QUESTTRAFE_API_URL % (
+            "accounts/%s/balances" % QUESTTRADE_ACCOUNT_NUMBER)
         response = self.make_request(url=balances_url)
 
         if not response:
             self.logs.error("No balances response.")
             return 0
-
+        cash_usd = float(0);
         try:
             balances = response["response"]
-            money = balances["accountbalance"]["money"]
-            cash_str = money["cash"]
-            uncleareddeposits_str = money["uncleareddeposits"]
+            for currency in balances["perCurrencyBalances"]:
+            
+                if currency["currency"] == "CAD":
+                    cash_usd = cash_usd + float(0.7)*float(currency["cash"])
+                if currency["currency"] == "USD":
+                    cash_usd = cash_usd + float(currency["cash"])
         except KeyError:
             self.logs.error("Malformed balances response: %s" % response)
             return 0
-
         try:
-            cash = float(cash_str)
-            uncleareddeposits = float(uncleareddeposits_str)
-            return cash - uncleareddeposits
+            return cash_usd
         except ValueError:
-            self.logs.error("Malformed number in response: %s" % money)
+            self.logs.error("Malformed number in response: %s" % currency)
+            return 0
+
+    def get_questrade_id(self, ticker):
+        """Finds the cash balance in USD dollars available to spend."""
+
+        balances_url = QUESTTRAFE_API_URL % "symbols/search?prefix=" % ticker
+        response = self.make_request(url=balances_url)
+
+        if not response:
+            self.logs.error("No search response.")
+            return 0
+        try:
+            search = response["response"]
+            for symbols in search:
+                if(symbol["listingExchange"]:
+                    return symbol["symbolId"]
+                    
+            
+        except KeyError:
+            self.logs.error("Malformed search response: %s" % response)
+            return 0
+        try:
+            return cash_usd
+        except ValueError:
+            self.logs.error("Malformed search number in response: %s" % currency)
             return 0
 
     def get_last_price(self, ticker):
