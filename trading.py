@@ -388,47 +388,54 @@ class Trading:
             self.logs.error("Failed to decode JSON response: %s" % content)
             return None
 
-    def fixml_buy_now(self, ticker, quantity, limit):
-        """Generates the JSON for a buy order."""
+    def json_buy_now(self, ticker, quantity, limit):
+        """Generates the JSON for a buy order MARKET order."""
+        order = {}
+        order["accountNumber"] = QUESTTRADE_ACCOUNT_NUMBER
+        order["symbolId"] = self.get_questrade_id(ticker)
+        order["quantity"] = quantity
+        order["limitPrice"] = limit
+        order["isAllOrNone"] = "true"
+        order["isAnonymous"] = "false"
+        order["orderType"] = "Limit"
+        order["timeInForce"] = "0"
+        order["action"] = "Buy"
+        order["primaryRoute"] = "AUTO"
+        sorder["SecondaryRoute"] = "AUTO"
+        return order
 
-        fixml = Element("FIXML")
-        fixml.set("xmlns", FIXML_NAMESPACE)
-        order = SubElement(fixml, "Order")
-        order.set("TmInForce", "0")  # Day order
-        order.set("Typ", "2")  # Limit
-        order.set("Side", "1")  # Buy
-        order.set("Px", "%.2f" % limit)  # Limit price
-        order.set("Acct", TRADEKING_ACCOUNT_NUMBER)
-        instrmt = SubElement(order, "Instrmt")
-        instrmt.set("SecTyp", "CS")  # Common stock
-        instrmt.set("Sym", ticker)
-        ord_qty = SubElement(order, "OrdQty")
-        ord_qty.set("Qty", str(quantity))
-
-        return tostring(fixml)
-
-    def fixml_sell_eod(self, ticker, quantity, limit):
+    def json_sell_eod(self, ticker, quantity, limit):
         """Generates the FIXML for a sell order."""
 
-        fixml = Element("FIXML")
-        fixml.set("xmlns", FIXML_NAMESPACE)
-        order = SubElement(fixml, "Order")
-        order.set("TmInForce", "7")  # Market on close
-        order.set("Typ", "2")  # Limit
-        order.set("Side", "2")  # Sell
-        order.set("Px", "%.2f" % limit)  # Limit price
-        order.set("Acct", TRADEKING_ACCOUNT_NUMBER)
-        instrmt = SubElement(order, "Instrmt")
-        instrmt.set("SecTyp", "CS")  # Common stock
-        instrmt.set("Sym", ticker)
-        ord_qty = SubElement(order, "OrdQty")
-        ord_qty.set("Qty", str(quantity))
-
-        return tostring(fixml)
+        order = {}
+        order["accountNumber"] = QUESTTRADE_ACCOUNT_NUMBER
+        order["symbolId"] = self.get_questrade_id(ticker)
+        order["quantity"] = quantity
+        order["limitPrice"] = limit
+        order["isAllOrNone"] = "true"
+        order["isAnonymous"] = "false"
+        order["orderType"] = "Limit"
+        order["timeInForce"] = "0"
+        order["action"] = "Sell"
+        order["primaryRoute"] = "AUTO"
+        sorder["SecondaryRoute"] = "AUTO"
+        return order
 
     def fixml_short_now(self, ticker, quantity, limit):
-        """Generates the FIXML for a sell short order."""
-
+        """Generates the FIXML for a sell short order. Cant short with this account"""
+        return None
+        order["accountNumber"] = QUESTTRADE_ACCOUNT_NUMBER
+        order["symbolId"] = self.get_questrade_id(ticker)
+        order["quantity"] = quantity
+        order["limitPrice"] = limit
+        order["isAllOrNone"] = "true"
+        order["isAnonymous"] = "false"
+        order["orderType"] = "Short"
+        order["timeInForce"] = "0"
+        order["action"] = "Sell"
+        order["primaryRoute"] = "AUTO"
+        sorder["SecondaryRoute"] = "AUTO"
+        
         fixml = Element("FIXML")
         fixml.set("xmlns", FIXML_NAMESPACE)
         order = SubElement(fixml, "Order")
@@ -446,7 +453,7 @@ class Trading:
         return tostring(fixml)
 
     def fixml_cover_eod(self, ticker, quantity, limit):
-        """Generates the FIXML for a sell to cover order."""
+        """Generates the FIXML for a sell to cover order. Cant Short so no cover either."""
 
         fixml = Element("FIXML")
         fixml.set("xmlns", FIXML_NAMESPACE)
@@ -598,25 +605,27 @@ class Trading:
 
         # Buy the stock now.
         buy_limit = self.get_buy_limit(price)
-        buy_fixml = self.fixml_buy_now(ticker, quantity, buy_limit)
-        if not self.make_order_request(buy_fixml):
+        buy_json = self.json_buy_now(ticker, quantity, buy_limit)
+        if not self.make_order_request(buy_json):
             return False
 
         # Sell the stock at close.
         sell_limit = self.get_sell_limit(price)
-        sell_fixml = self.fixml_sell_eod(ticker, quantity, sell_limit)
+        sell_json = self.json_sell_eod(ticker, quantity, sell_limit)
         # TODO: Do this properly by checking the order status API and using
         #       retries with exponential backoff.
         # Wait until the previous order has been executed.
-        Timer(ORDER_DELAY_S, self.make_order_request, [sell_fixml]).start()
+        Timer(ORDER_DELAY_S, self.make_order_request, [sell_json]).start()
 
         return True
 
     def bear(self, ticker, budget):
-        """Executes the bearish strategy on the specified stock within the
+        """This is moot since I can short. Executes the bearish strategy on the specified stock within the
         specified budget: Sell short at market rate and buy to cover at market
         rate at close.
         """
+        self.logs.warn("Can not Short, so exit.")
+        return False
 
         # Calculate the quantity.
         quantity, price = self.get_quantity(ticker, budget)
@@ -626,17 +635,17 @@ class Trading:
 
         # Short the stock now.
         short_limit = self.get_sell_limit(price)
-        short_fixml = self.fixml_short_now(ticker, quantity, short_limit)
-        if not self.make_order_request(short_fixml):
+        short_json = self.json_short_now(ticker, quantity, short_limit)
+        if not self.make_order_request(short_json):
             return False
 
         # Cover the short at close.
         cover_limit = self.get_buy_limit(price)
-        cover_fixml = self.fixml_cover_eod(ticker, quantity, cover_limit)
+        cover_json = self.json_cover_eod(ticker, quantity, cover_limit)
         # TODO: Do this properly by checking the order status API and using
         #       retries with exponential backoff.
         # Wait until the previous order has been executed.
-        Timer(ORDER_DELAY_S, self.make_order_request, [cover_fixml]).start()
+        Timer(ORDER_DELAY_S, self.make_order_request, [cover_json]).start()
 
         return True
 
