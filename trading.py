@@ -165,11 +165,25 @@ class Trading:
             self.logs.warn("No budget without strategies.")
             return 0.0
         return round(max(0.0, balance - CASH_HOLD) / num_strategies, 2)
+        
+    def get_markets(self):
+        """Finds out whether the markets are open right now."""
+        markets = QUESTTRADE_API_URL % "/markets"
+        response = self.make_request(url=markets)
+        if not response:
+            self.logs.error("No markets response.")
+            return None
+        try:
+            markets_response = response["response"]
+            for market in markets_response:
+            	if market["name"] == "NYSE":
+            	    return (market["startTime"] , market["endTime"])
+            	    
 
     def get_market_status(self):
         """Finds out whether the markets are open right now."""
 
-        clock_url = TRADEKING_API_URL % "market/clock"
+        clock_url = QUESTTRADE_API_URL % "/time"
         response = self.make_request(url=clock_url)
 
         if not response:
@@ -178,7 +192,7 @@ class Trading:
 
         try:
             clock_response = response["response"]
-            current = clock_response["status"]["current"]
+            current = clock_response["time"]
         except KeyError:
             self.logs.error("Malformed clock response: %s" % response)
             return None
@@ -372,7 +386,7 @@ class Trading:
             return None
 
     def fixml_buy_now(self, ticker, quantity, limit):
-        """Generates the FIXML for a buy order."""
+        """Generates the JSON for a buy order."""
 
         fixml = Element("FIXML")
         fixml.set("xmlns", FIXML_NAMESPACE)
@@ -487,7 +501,7 @@ class Trading:
             return 0
 
     def get_questrade_id(self, ticker):
-        """Finds the cash balance in USD dollars available to spend."""
+        """Finds the id for a ticker for use on Quest Trade only. """
 
         balances_url = QUESTTRAFE_API_URL % "symbols/search?prefix=" % ticker
         response = self.make_request(url=balances_url)
@@ -497,11 +511,9 @@ class Trading:
             return 0
         try:
             search = response["response"]
-            for symbols in search:
-                if(symbol["listingExchange"]:
+            for symbol in search["symbol"]:
+                if symbol["listingExchange"] == "NYSE":
                     return symbol["symbolId"]
-                    
-            
         except KeyError:
             self.logs.error("Malformed search response: %s" % response)
             return 0
@@ -514,9 +526,8 @@ class Trading:
     def get_last_price(self, ticker):
         """Finds the last trade price for the specified stock."""
 
-        quotes_url = TRADEKING_API_URL % "market/ext/quotes"
-        quotes_url += "?symbols=%s" % ticker
-        quotes_url += "&fids=last,date,symbol,exch_desc,name"
+        quotes_url = QUESTTRADE_API_URL % "markets/quotes/"
+        quotes_url += str(get_questrade_id(ticker))
 
         response = self.make_request(url=quotes_url)
 
@@ -527,8 +538,7 @@ class Trading:
 
         try:
             quotes = response["response"]
-            quote = quotes["quotes"]["quote"]
-            last_str = quote["last"]
+            last_str = quotes["quotes"]["lastTradePrice"]
         except KeyError:
             self.logs.error("Malformed quotes response: %s" % response)
             return None
@@ -548,12 +558,10 @@ class Trading:
             return None
 
     def get_order_url(self):
-        """Gets the TradeKing URL for placing orders."""
+        """Gets the Quest Trade URL for placing orders."""
 
-        url_path = "accounts/%s/orders" % TRADEKING_ACCOUNT_NUMBER
-        if not USE_REAL_MONEY:
-            url_path += "/preview"
-        return TRADEKING_API_URL % url_path
+        url_path = "accounts/%s/orders" % QUESTTRADE_ACCOUNT_NUMBER
+        return QUESTTRADE_API_URL % url_path
 
     def get_quantity(self, ticker, budget):
         """Calculates the quantity of a stock based on the current market price
