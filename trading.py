@@ -15,19 +15,19 @@ from threading import Timer
 
 from logs import Logs
 
-# Read the authentication keys for TradeKing from environment variables.
-TRADEKING_CONSUMER_KEY = getenv("QUESTTRADE_CONSUMER_KEY")
-TRADEKING_CONSUMER_SECRET = getenv("QUESTTRADE_CONSUMER_SECRET")
-TRADEKING_ACCESS_TOKEN = getenv("QUESTTRADE_ACCESS_TOKEN")
-TRADEKING_ACCESS_TOKEN_SECRET = getenv("QUESTTRADE_ACCESS_TOKEN_SECRET")
+# Read the authentication keys for QUESTTRADE from environment variables. QUESTTRADE
+QUESTTRADE_CONSUMER_KEY = getenv("QUESTTRADE_CONSUMER_KEY")
+QUESTTRADE_CONSUMER_SECRET = getenv("QUESTTRADE_CONSUMER_SECRET")
+QUESTTRADE_ACCESS_TOKEN = getenv("QUESTTRADE_ACCESS_TOKEN")
+QUESTTRADE_ACCESS_TOKEN_SECRET = getenv("QUESTTRADE_ACCESS_TOKEN_SECRET")
 
-# Read the TradeKing account number from the environment variable.
-TRADEKING_ACCOUNT_NUMBER = getenv("QUESTTRADE_ACCOUNT_NUMBER")
+# Read the Quest Trade account number from the environment variable.
+QUESTTRADE_ACCOUNT_NUMBER = getenv("QUESTTRADE_ACCOUNT_NUMBER")
 
 # Only allow actual trades when the environment variable confirms it.
 USE_REAL_MONEY = getenv("USE_REAL_MONEY") == "NO"
 
-# The base URL for API requests to TradeKing.
+# The base URL for API requests to Quest Trade.
 QUESTTRADE_API_URL = "https://api01.iq.questrade.com/v1/"
 
 
@@ -53,6 +53,7 @@ MARKET_DATA_FILE = "market_data/%s_%s.txt"
 PRACTICE_REFRESH_TOKEN_URL = "https://practicelogin.questrade.com/oauth2/token?grant_type=refresh_token&refresh_token="
 REFRESH_TOKEN_URL = "https://login.questrade.com/oauth2/token?grant_type=refresh_token&refresh_token="
 
+JSON_HEADERS = {"Content-Type": "text/json"}
 
 class Trading:
     """A helper for making stock trades."""
@@ -443,7 +444,7 @@ class Trading:
         order.set("Typ", "2")  # Limit
         order.set("Side", "5")  # Sell short
         order.set("Px", "%.2f" % limit)  # Limit price
-        order.set("Acct", TRADEKING_ACCOUNT_NUMBER)
+        order.set("Acct", QUESTTRADE_ACCOUNT_NUMBER)
         instrmt = SubElement(order, "Instrmt")
         instrmt.set("SecTyp", "CS")  # Common stock
         instrmt.set("Sym", ticker)
@@ -463,7 +464,7 @@ class Trading:
         order.set("Side", "1")  # Buy
         order.set("Px", "%.2f" % limit)  # Limit price
         order.set("AcctTyp", "5")  # Cover
-        order.set("Acct", TRADEKING_ACCOUNT_NUMBER)
+        order.set("Acct", QUESTTRADE_ACCOUNT_NUMBER)
         instrmt = SubElement(order, "Instrmt")
         instrmt.set("SecTyp", "CS")  # Common stock
         instrmt.set("Sym", ticker)
@@ -650,10 +651,10 @@ class Trading:
         return True
 
     def make_order_request(self, fixml):
-        """Executes an order defined by FIXML and verifies the response."""
+        """Executes an order defined by JSON and verifies the response."""
 
         response = self.make_request(url=self.get_order_url(), method="POST",
-                                     body=fixml, headers=FIXML_HEADERS)
+                                     body=fixml, headers=JSON_HEADERS)
 
         if not response:
             self.logs.error("No order response for: %s" % fixml)
