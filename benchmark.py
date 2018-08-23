@@ -16,7 +16,7 @@ SINCE_TWEET_ID = "806134244384899072"
 FUND_DOLLARS = 100000
 
 # The fee in dollars per trade (https://www.tradeking.com/rates).
-TRADE_FEE = 4.95
+TRADE_FEE = 4.99
 
 
 def format_ratio(ratio):
@@ -119,6 +119,7 @@ if __name__ == "__main__":
     twitter = Twitter(logs_to_cloud=False)
 
     # Look up the metadata for the tweets.
+    """Start Here"""
     tweets = twitter.get_tweets(SINCE_TWEET_ID)
 
     events = []
