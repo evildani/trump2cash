@@ -6,11 +6,11 @@ from pytz import utc
 
 from trading import Trading
 from trading import MARKET_TIMEZONE
-from trading import TRADEKING_CONSUMER_KEY
-from trading import TRADEKING_CONSUMER_SECRET
-from trading import TRADEKING_ACCESS_TOKEN
-from trading import TRADEKING_ACCESS_TOKEN_SECRET
-from trading import TRADEKING_ACCOUNT_NUMBER
+from trading import QUESTTRADE_CONSUMER_KEY
+from trading import QUESTTRADE_CONSUMER_SECRET
+from trading import QUESTTRADE_ACCESS_TOKEN
+from trading import QUESTTRADE_ACCESS_TOKEN_SECRET
+from trading import QUESTTRADE_ACCOUNT_NUMBER
 from trading import USE_REAL_MONEY
 
 
@@ -27,11 +27,11 @@ def as_market_time(year, month, day, hour=0, minute=0, second=0):
 
 
 def test_environment_variables():
-    assert TRADEKING_CONSUMER_KEY
-    assert TRADEKING_CONSUMER_SECRET
-    assert TRADEKING_ACCESS_TOKEN
-    assert TRADEKING_ACCESS_TOKEN_SECRET
-    assert TRADEKING_ACCOUNT_NUMBER
+    assert QUESTTRADE_CONSUMER_KEY
+    assert QUESTTRADE_CONSUMER_SECRET
+    assert QUESTTRADE_ACCESS_TOKEN
+    assert QUESTTRADE_ACCESS_TOKEN_SECRET
+    assert QUESTTRADE_ACCOUNT_NUMBER
     assert not USE_REAL_MONEY
 
 
@@ -165,16 +165,16 @@ def test_market_time_to_utc(trading):
 
 
 def test_make_request_success(trading):
-    url = "https://api.tradeking.com/v1/member/profile.json"
+    url = "https://api.QUESTTRADE.com/v1/member/profile.json"
     response = trading.make_request(url=url)
     assert response is not None
     account = response["response"]["userdata"]["account"]["account"]
-    assert account == TRADEKING_ACCOUNT_NUMBER
+    assert account == QUESTTRADE_ACCOUNT_NUMBER
     assert response["response"]["error"] == "Success"
 
 
 def test_make_request_fail(trading):
-    url = "https://api.tradeking.com/v1/member/profile.xml"
+    url = "https://api.QUESTTRADE.com/v1/member/profile.xml"
     response = trading.make_request(url=url)
     assert response is None
 
@@ -186,7 +186,7 @@ def test_fixml_buy_now(trading):
         '<Instrmt SecTyp="CS" Sym="GM"/>'
         '<OrdQty Qty="23"/>'
         '</Order>'
-        '</FIXML>' % TRADEKING_ACCOUNT_NUMBER)
+        '</FIXML>' % QUESTTRADE_ACCOUNT_NUMBER)
 
 
 def test_fixml_sell_eod(trading):
@@ -196,7 +196,7 @@ def test_fixml_sell_eod(trading):
         '<Instrmt SecTyp="CS" Sym="GM"/>'
         '<OrdQty Qty="23"/>'
         '</Order>'
-        '</FIXML>' % TRADEKING_ACCOUNT_NUMBER)
+        '</FIXML>' % QUESTTRADE_ACCOUNT_NUMBER)
 
 
 def test_fixml_short_now(trading):
@@ -206,7 +206,7 @@ def test_fixml_short_now(trading):
         '<Instrmt SecTyp="CS" Sym="GM"/>'
         '<OrdQty Qty="23"/>'
         '</Order>'
-        '</FIXML>' % TRADEKING_ACCOUNT_NUMBER)
+        '</FIXML>' % QUESTTRADE_ACCOUNT_NUMBER)
 
 
 def test_fixml_cover_eod(trading):
@@ -217,7 +217,7 @@ def test_fixml_cover_eod(trading):
         '<Instrmt SecTyp="CS" Sym="GM"/>'
         '<OrdQty Qty="23"/>'
         '</Order>'
-        '</FIXML>' % TRADEKING_ACCOUNT_NUMBER)
+        '</FIXML>' % QUESTTRADE_ACCOUNT_NUMBER)
 
 
 def test_get_buy_limit(trading):
@@ -245,8 +245,8 @@ def test_get_market_status(trading):
 
 def test_get_order_url(trading):
     assert trading.get_order_url() == (
-        "https://api.tradeking.com/v1/accounts/%s/"
-        "orders/preview.json") % TRADEKING_ACCOUNT_NUMBER
+        "https://api.QUESTTRADE.com/v1/accounts/%s/"
+        "orders/preview.json") % QUESTTRADE_ACCOUNT_NUMBER
 
 
 def test_get_quantity(trading):
@@ -383,7 +383,7 @@ def test_make_order_request_success(trading):
         '<Instrmt SecTyp="CS" Sym="GM"/>'
         '<OrdQty Qty="23"/>'
         '</Order>'
-        '</FIXML>' % TRADEKING_ACCOUNT_NUMBER))
+        '</FIXML>' % QUESTTRADE_ACCOUNT_NUMBER))
 
 
 def test_make_order_request_fail(trading):
